@@ -1,3 +1,9 @@
 .DS_Store
 .venv/
 __pycache__/
+.idea/workspace.xml
+.idea/vcs.xml
+.idea/poker-rl.iml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/profiles_settings.xml
