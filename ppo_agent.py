@@ -1,6 +1,6 @@
 class PPOAgent:
     def __init__(self):
-      pass
+      self.use_raw = False
 
 
     def step(state):
