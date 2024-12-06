@@ -1,29 +1,54 @@
 import torch
+import torch.nn as nn
 
 class PPOPolicy:
     # want to make the non-legal probabilities close to zero
-    def __init__(self):
-        pass
+    def __init__(self, in_channels, hidden_dim, action_space, clip=True):
+        # in channels = state feature size 
+        self.linear1 = nn.Linear(in_channels, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, action_space)
+        self.relu = nn.ReLU()
+        self.softmax = nn.Softmax(dim=-1)
+        self.clip = clip 
+
     def forward(self, x):
-        pass
-    def compute_surrogate_loss(self):
-        pass
+        x = self.linear1(x)
+        x = self.linear2(x)
+        x = self.relu(x)
+        x = self.softmax(x)
+        return x 
+
+    def compute_surrogate_loss(self, rewards, advantages, epsilon):
+        loss = 0
+        if self.clip: 
+            loss = torch.min(torch.matmul(rewards, advantages), torch.matmul(torch.clip(rewards, 1 - epsilon, 1 + epsilon), advantages))
+        return loss 
 
 class ValueEstimator:
     def __init__(self):
-        pass
+        self.linear1 = nn.Linear(in_channels, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, out_channels)
+        self.relu = nn.ReLU()
+
     def forward(self, x):
-        pass
-    def compute_loss(self):
+        x = self.relu(self.linear1(x))
+        x = self.relu(self.linear2(x))
+        return x
+
+    def compute_loss(self, states):
+
         pass
 
 class PPOAgent:
-    def __init__(self, num_iters, num_timesteps):
+    def __init__(self, num_iters, num_timesteps, num_epochs, epsilon, num_actors):
         self.use_raw = False
         self.num_iters = num_iters
         self.num_timesteps = num_timesteps
-        self.policy = PPOPolicy()
+        self.num_epochs = num_epochs 
+        self.policy = PPOPolicy(self.state_feature_size, self.hidden_dim, self.action_space_size, clip=True)
         self.value_f = ValueEstimator()
+        self.epsilon = 0.05 # for clipping (i just put a random value at this point)
+        self.num_actors = num_actors
 
     def step(state):
         ''' Predict the action given the curent state in generating training data.
@@ -35,7 +60,6 @@ class PPOAgent:
             action (int): The action predicted by the agent.
         '''
         pass
-
 
     def eval_step(self, state):
         ''' Predict the action given the current state for evaluation.
@@ -49,13 +73,20 @@ class PPOAgent:
         '''
         pass
 
-    def rollout(self, state):
+    def advantage(self):
         pass
 
-    def train(self, state):
-        for i in range(self.num_actors):
+    def rollout(self, state):
+        # sample the next state for T timesteps 
+        self.policy(state)
+
+    def train(self, states):
+        # make a new dim for num_actors to do rollouts in parallel
+        actors_states = states.reshape([states.shape[0], self.num_actors, 1])
+        # for i in range(self.num_actors):
             # rollout policy pi_old in environment for T timesteps
-            rewards, advantages, value_f_estimates = self.rollout(state)
-        surrogate_loss = self.policy.compute_surrogate_loss(rewards, advantages)
-        value_f_loss = self.value_f.compute_loss(rewards, value_f_estimates)
+            rewards, advantages, states = self.rollout(actors_states, self.gamma, self.num_timesteps)
+            surrogate_loss = self.policy.compute_surrogate_loss(rewards, advantages, self.epsilon)
+            value_f_loss = self.value_f.compute_loss(states)
         for k in self.num_epochs:
+            
