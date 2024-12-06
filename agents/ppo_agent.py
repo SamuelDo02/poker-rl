@@ -76,9 +76,29 @@ class PPOAgent:
     def advantage(self):
         pass
 
-    def rollout(self, state):
+    def rollout(self, state, num_games):
+        # TODO: None of this works. This is just pseudo code.
         # sample the next state for T timesteps 
-        self.policy(state)
+        returns = []
+        rewards = []
+        advantages = []
+        states = []
+
+        for _ in range(num_games):
+            while state.game_not_ended:
+                action_distr = self.policy(state)
+                action = torch.sample(action_distr)
+                state.choose_action(action)
+
+                # This actually has to be computed backwards from the end
+                # of the episode to correctly account for discount.
+                reward = reward_of(action)
+                rewards.append(reward)
+                returns.append(return_of(reward, state))
+                advantages.append(advantage_of(returns, state))
+                states.append(state) # Do we mean value of the state here?
+                
+        return rewards, advantages, states 
 
     def train(self, states):
         # make a new dim for num_actors to do rollouts in parallel
