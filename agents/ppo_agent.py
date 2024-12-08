@@ -13,15 +13,16 @@ class PPOPolicy:
 
     def forward(self, x):
         x = self.linear1(x)
+        x = self.relu(x)
         x = self.linear2(x)
         x = self.relu(x)
         x = self.softmax(x)
         return x 
 
-    def compute_surrogate_loss(self, rewards, advantages, epsilon):
+    def compute_surrogate_loss(self, ratio, advantages, epsilon):
         loss = 0
-        if self.clip: 
-            loss = torch.min(torch.matmul(rewards, advantages), torch.matmul(torch.clip(rewards, 1 - epsilon, 1 + epsilon), advantages))
+        if self.clip:
+            loss = torch.min(torch.matmul(ratio, advantages), torch.matmul(torch.clip(ratio, 1 - epsilon, 1 + epsilon), advantages))
         return loss 
 
 class ValueEstimator:
@@ -47,11 +48,11 @@ class PPOAgent:
         self.num_epochs = num_epochs 
         self.policy = PPOPolicy(self.state_feature_size, self.hidden_dim, self.action_space_size, clip=True)
         self.value_f = ValueEstimator()
-        self.epsilon = 0.05 # for clipping (i just put a random value at this point)
+        self.epsilon = 0.2 # for clipping
         self.num_actors = num_actors
 
     def step(state):
-        ''' Predict the action given the curent state in generating training data.
+        ''' Predict the action given the current state in generating training data.
 
         Args:
             state (dict): An dictionary that represents the current state
