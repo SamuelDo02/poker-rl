@@ -1,3 +1,4 @@
+import rlcard
 import torch
 import torch.nn as nn
 
@@ -71,23 +72,29 @@ class PPOAgent:
             action (int): The action predicted predicted by the agent.
             probs (list): The list of action probabilities.
         '''
+        print(state)
         pass
 
     def advantage(self):
         pass
 
-    def rollout(self, state, num_games):
-        # TODO: None of this works. This is just pseudo code.
-        # sample the next state for T timesteps 
+    def rollout(self, game_env, policy):
+        """
+        Rollouts a policy for one round.
+        """
+        trajectories, payoffs = game_env.run(is_training=True)
+        """
+        state = game_env.reset()
         returns = []
         rewards = []
         advantages = []
         states = []
 
-        for _ in range(num_games):
+        state = rlcard
             while state.game_not_ended:
-                action_distr = self.policy(state)
-                action = torch.sample(action_distr)
+                action_weights = policy(state)
+                action = torch.multinomial(action_weights, 1).item()
+                # Below is pseudocode
                 state.choose_action(action)
 
                 # This actually has to be computed backwards from the end
@@ -99,6 +106,7 @@ class PPOAgent:
                 states.append(state) # Do we mean value of the state here?
                 
         return rewards, advantages, states 
+        """
 
     def train(self, states):
         # make a new dim for num_actors to do rollouts in parallel
