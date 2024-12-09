@@ -17,8 +17,8 @@ def rollout(env):
     """
     Rollouts agents for one round.
     """
-    trajectories, payoffs = env.run(is_training=True)
-    print(payoffs)
+    trajectories, _ = env.run(is_training=True)
+    print(trajectories)
 
 
 def rollout_all_actors(env, num_actors):
@@ -54,7 +54,6 @@ def init_env(env, agent, num_random_agents):
     random_agents = [RandomAgent(num_actions=env.num_actions) 
                      for _ in range(num_random_agents)]
     env.set_agents([agent, *random_agents])
-    env.set_agents(random_agents)
 
 
 if __name__ == '__main__':
