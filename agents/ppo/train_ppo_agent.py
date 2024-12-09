@@ -3,6 +3,7 @@ from tqdm import tqdm
 
 import torch
 import torch.nn as nn
+import torch.optim as optim
 
 import rlcard
 from rlcard.agents import RandomAgent
@@ -69,7 +70,8 @@ def rollout_all_actors(env, value_estimator, old_agent, new_agent, num_actors):
     print(rollout(env, value_estimator, old_agent))
 
 
-def train(env, agent, value_estimator, num_iters, num_actors, epsilon):
+def train(env, agent, value_estimator, num_iters, num_actors, epsilon, lr):
+    optimizer = optim.Adam(agent.parameters(), lr=lr)
     for _ in tqdm(range(num_iters)):
         rollout_all_actors(env, value_estimator, agent, agent, num_actors)
         old_policy = copy(policy) # TODO: Can we do this without copying?
@@ -80,7 +82,9 @@ def train(env, agent, value_estimator, num_iters, num_actors, epsilon):
         ratios = torch.exp(cur_log_probs - prev_log_probs)
         surrogate_loss = policy.compute_surrogate_loss(ratios, advantages, epsilon)
         for k in self.num_epochs:
+            optimizer.zero_grad()
             surrogate_loss.backward()
+            optimizer.step() 
 
 
 def env_shape(env):
@@ -107,6 +111,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_actors', type=int, default=5)
     parser.add_argument('--rollout_length', type=int, default=5)
     parser.add_argument('--epsilon', type=int, default=0.2)
+    parser.add_argument('--lr', type=float, default=0.01)
     args = parser.parse_args()
 
     env = rlcard.make(ENV_ID)
@@ -116,4 +121,4 @@ if __name__ == '__main__':
 
     value_estimator = ValueEstimator()
 
-    train(env, agent, value_estimator, args.num_iters, args.num_actors, args.epsilon)
+    train(env, agent, value_estimator, args.num_iters, args.num_actors, args.epsilon, args.lr)
