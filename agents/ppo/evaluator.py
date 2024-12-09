@@ -60,7 +60,7 @@ def evaluate_model_checkpoints(args):
     for ckpt_file in sorted(os.listdir(ckpt_path)):
         model_path = os.path.join(ckpt_path, ckpt_file)
         print(model_path)
-        model_paths = [model_path, args.opp]
+        model_paths = [model_path, args.opp_path]
         if model_path.endswith(".pt"):
             match = re.search(r'\d+', os.path.basename(model_path))
             iteration = int(match.group())
@@ -191,6 +191,11 @@ if __name__ == '__main__':
         '--all',
         action='store_true',
         default=False,
+    )
+    parser.add_argument(
+        '--opp_path',
+        type=str,
+        default="random",
     )
     parser.add_argument(
         '--opp',
