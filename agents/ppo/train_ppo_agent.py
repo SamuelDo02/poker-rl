@@ -231,7 +231,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iters', type=int, default=1000)
     parser.add_argument('--num_actors', type=int, default=1)
     parser.add_argument('--num_action_samples', type=int, default=50)
-    parser.add_argument('--clip_epsilon', type=int, default=0.2)
+    parser.add_argument('--clip_epsilon', type=float, default=0.2)
     parser.add_argument('--lr', type=float, default=0.001)
     parser.add_argument('--beta', type=float, default=5)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
