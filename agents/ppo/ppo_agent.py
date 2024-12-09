@@ -16,12 +16,20 @@ class PPOAgent:
         Returns:
             action (int): The action predicted by the agent.
         '''
-        action_probs = self.policy(state['obs'])
+        """action_probs = self.policy(state['obs'])
         action = None
         while action not in list(state['legal_actions'].keys()):
             # keep resampling
             # action is an int / index
-            action = torch.multinomial(action_probs, num_samples=1, replacement=True)
+            action = torch.multinomial(action_probs, num_samples=1, replacement=True)"""
+        action_probs = self.policy(state['obs'])
+        mask = torch.zeros_like(action_probs)
+        mask[state['legal_actions'].keys()] = 1.0
+        masked_probs = action_probs * mask
+        total = masked_probs.sum()
+        rescaled_action_probs = masked_probs / total
+        action = torch.multinomial(rescaled_action_probs, num_samples=1, replacement=True)
+
         return action
 
     def eval_step(self, state):
@@ -36,17 +44,17 @@ class PPOAgent:
         '''
         action_probs = self.policy(state['obs'])
         action = None
-        while action not in list(state['legal_actions'].keys()):
+        """while action not in list(state['legal_actions'].keys()):
             # keep resampling
             # action is an int / index
-            action = torch.multinomial(action_probs, num_samples=1, replacement=True)
+            action = torch.multinomial(action_probs, num_samples=1, replacement=True)"""
 
         mask = torch.zeros_like(action_probs)
         mask[state['legal_actions'].keys()] = 1.0
         masked_probs = action_probs * mask
         total = masked_probs.sum()
         rescaled_action_probs = masked_probs / total
-        # action = torch.multinomial(rescaled_action_probs, num_samples=1, replacement=True)
+        action = torch.multinomial(rescaled_action_probs, num_samples=1, replacement=True)
 
         info = {}
         info['probs'] = {state['raw_legal_actions'][i]: rescaled_action_probs[list(state['legal_actions'].keys())[i]] for i in range(len(state['legal_actions']))}
