@@ -43,7 +43,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser("Train PPO agent on No Limit Texas Hold'Em")
     # TODO: Change this default to 1 when we add PPO agent to the list of agents.
     parser.add_argument('--num_random_agents', type=int, default=2) 
+    parser.add_argument('--num_iters', type=int, default=200)
+    parser.add_argument('--num_actors', type=int, default=5)
+    parser.add_argument('--rollout_length', type=int, default=5)
+    parser.add_argument('--epsilon', type=int, default=0.2)
     args = parser.parse_args()
 
     env = initialize_env(args.num_random_agents)
-    train(env, num_iters, num_actors, epsilon)
+    train(env, args.num_iters, args.num_actors, args.rollout_length, args.epsilon)
