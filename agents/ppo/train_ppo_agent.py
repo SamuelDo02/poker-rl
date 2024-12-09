@@ -7,6 +7,8 @@ import torch.nn as nn
 import rlcard
 from rlcard.agents import RandomAgent
 
+from ppo_agent import PPOAgent
+
 def rollout(self, env):
     """
     Rollouts a policy for one round.
@@ -14,18 +16,7 @@ def rollout(self, env):
     trajectories, payoffs = game_env.run(is_training=True)
 
 
-def initialize_env(num_random_agents):
-    env = rlcard.make('no-limit-holdem')
-
-    # TODO: Add PPO agent to the list.
-    random_agents = [RandomAgent(num_actions=env.num_actions) 
-                     for _ in range(num_random_agents)]
-    env.set_agents(random_agents)
-
-    return env
-
-
-def train(env, num_iters, num_actors, rollout_length, epsilon):
+def train(env, agent, num_iters, num_actors, rollout_length, epsilon):
     policy = init_policy()
     for i in tqdm(range(num_iters)):
         old_policy = copy(policy) # TODO: Can we do this without copying?
@@ -39,6 +30,16 @@ def train(env, num_iters, num_actors, rollout_length, epsilon):
             surrogate_loss.backward()
 
 
+def init_env(agent, num_random_agents):
+    env = rlcard.make('no-limit-holdem')
+
+    random_agents = [RandomAgent(num_actions=env.num_actions) 
+                     for _ in range(num_random_agents)]
+    env.set_agents([agent, *random_agents])
+
+    return env
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Train PPO agent on No Limit Texas Hold'Em")
     # TODO: Change this default to 1 when we add PPO agent to the list of agents.
@@ -49,5 +50,7 @@ if __name__ == '__main__':
     parser.add_argument('--epsilon', type=int, default=0.2)
     args = parser.parse_args()
 
-    env = initialize_env(args.num_random_agents)
-    train(env, args.num_iters, args.num_actors, args.rollout_length, args.epsilon)
+    agent = PPOAgent()
+    env = init_env(agent, args.num_random_agents)
+
+    train(env, agent, args.num_iters, args.num_actors, args.rollout_length, args.epsilon)
