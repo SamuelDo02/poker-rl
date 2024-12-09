@@ -60,7 +60,7 @@ def evaluate_model_checkpoints(args):
     for ckpt_file in sorted(os.listdir(ckpt_path)):
         model_path = os.path.join(ckpt_path, ckpt_file)
         print(model_path)
-        model_paths = [model_path, 'random']
+        model_paths = [model_path, args.opp]
         if model_path.endswith(".pt"):
             match = re.search(r'\d+', os.path.basename(model_path))
             iteration = int(match.group())
@@ -68,7 +68,6 @@ def evaluate_model_checkpoints(args):
             # Load models
             agents = []
             for position, model in enumerate(model_paths):
-                print(position, model)
                 agents.append(load_model(model, env, position, device))
             env.set_agents(agents)
 
@@ -79,7 +78,7 @@ def evaluate_model_checkpoints(args):
                 if position == 0:
                     average_rewards[iteration] = reward
 
-    ave_reward_path = f'{ckpt_path}/average_rewards.png'
+    ave_reward_path = f'{ckpt_path}/average_rewards_{args.opp}.png'
     sorted_rewards = []
     for iteration in sorted(iterations):
         sorted_rewards.append(average_rewards[iteration])
@@ -192,6 +191,11 @@ if __name__ == '__main__':
         '--all',
         action='store_true',
         default=False,
+    )
+    parser.add_argument(
+        '--opp',
+        type=str,
+        default="random",
     )
 
     args = parser.parse_args()
