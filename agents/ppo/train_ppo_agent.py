@@ -155,11 +155,11 @@ def train(env,
         advantages = torch.tensor(advantages)
         surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, clip_epsilon)
 
-        # action_probs = torch.stack(action_probs)
-        # entropy = torch.sum(action_probs * torch.log(action_probs + LOG_EPSILON), dim=-1)
-        # entropy.reshape(surrogate_loss.shape)
+        action_probs = torch.stack(action_probs)
+        entropy = torch.sum(action_probs * torch.log(action_probs + LOG_EPSILON), dim=-1)
+        entropy.reshape(surrogate_loss.shape)
         
-        total_loss = surrogate_loss # - beta * entropy
+        total_loss = surrogate_loss - beta * entropy
         mean_loss = torch.mean(total_loss) 
         losses.append(surrogate_loss.mean().item())
 
@@ -208,7 +208,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_action_samples', type=int, default=50)
     parser.add_argument('--clip_epsilon', type=int, default=0.2)
     parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--beta', type=float, default=5000)
+    parser.add_argument('--beta', type=float, default=5)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
     parser.add_argument('--checkpoint_freq', type=int, default=100)
     args = parser.parse_args()
