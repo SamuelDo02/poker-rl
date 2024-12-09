@@ -169,18 +169,28 @@ def train(env,
         mean_loss.backward()
         optimizer.step()
 
+        cumulative_payoff.append(payoff + (cumulative_payoff[-1] if cumulative_payoff else 0))
+
         if (i + 1) % checkpoint_freq == 0:
-            checkpoint_path = f'{checkpoint_folder}/{checkpoint_folder_id}/model_{i + 1}.pt'
+            base_path = f'{checkpoint_folder}/{checkpoint_folder_id}'
+            checkpoint_path = f'{base_path}/checkpoints/model_{i + 1}.pt'
             os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True) 
             torch.save(agent, checkpoint_path)
 
-        cumulative_payoff.append(payoff + (cumulative_payoff[-1] if cumulative_payoff else 0))
-            
-    plt.plot(losses)
-    plt.show()
+            loss_graph_path = f'{base_path}/loss.png'
+            plt.plot(losses)
+            plt.yscale('log')
+            plt.xlabel('Iterations')
+            plt.ylabel('Loss')
+            plt.savefig(loss_graph_path)
+            plt.close()
 
-    plt.plot(cumulative_payoff)
-    plt.show()
+            payoff_graph_path = f'{base_path}/payoff.png'
+            plt.plot(cumulative_payoff)
+            plt.xlabel('Iterations')
+            plt.ylabel('Cumulative Payoff')
+            plt.savefig(payoff_graph_path)
+            plt.close()
 
 
 def env_shape(env):
