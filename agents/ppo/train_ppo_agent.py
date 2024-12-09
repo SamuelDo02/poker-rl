@@ -81,7 +81,8 @@ def rollout_all_actors(env, value_estimator, old_agent, num_actors):
     return all_advantages, all_old_probs, all_new_probs
 
 
-def train(env, agent, num_iters, num_actors, epsilon, lr):
+LOG_EPSILON = 10**-7
+def train(env, agent, num_iters, num_actors, clip_epsilon, lr):
     old_agent = agent
     value_estimator = ValueEstimator()
     optimizer = optim.Adam(agent.policy.parameters(), lr=lr)
@@ -91,12 +92,12 @@ def train(env, agent, num_iters, num_actors, epsilon, lr):
         if len(advantages) == 0:
             continue
 
-        old_log_probs = torch.log(torch.stack(old_probs))
-        new_log_probs = torch.log(torch.stack(new_probs))
+        old_log_probs = torch.log(torch.stack(old_probs) + LOG_EPSILON)
+        new_log_probs = torch.log(torch.stack(new_probs) + LOG_EPSILON)
         prob_ratios = torch.exp(new_log_probs - old_log_probs)
 
         advantages = torch.tensor(advantages)
-        surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, epsilon)
+        surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, clip_epsilon)
         avg_surrogate_loss = torch.mean(surrogate_loss) 
 
         old_agent = copy.deepcopy(agent)
