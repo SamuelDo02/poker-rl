@@ -10,6 +10,11 @@ class PPOAgent:
         self.policy = PPOPolicy(state_channels, hidden_dim, action_channels, clip=True)
 
 
+    def set_device(self, device):
+        self.device = device
+        self.policy.device = device
+
+
     def step_with_probs(self, state, no_grad=False):
         obs = torch.from_numpy(state['obs']).float()
 
