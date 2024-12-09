@@ -130,7 +130,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_iters', type=int, default=200)
     parser.add_argument('--num_actors', type=int, default=5)
     parser.add_argument('--rollout_length', type=int, default=5)
-    parser.add_argument('--epsilon', type=int, default=0.2)
+    parser.add_argument('--clip_epsilon', type=int, default=0.2)
     parser.add_argument('--lr', type=float, default=0.01)
     args = parser.parse_args()
 
@@ -139,4 +139,4 @@ if __name__ == '__main__':
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
     init_env(env, agent, args.num_random_agents)
 
-    train(env, agent, args.num_iters, args.num_actors, args.epsilon, args.lr)
+    train(env, agent, args.num_iters, args.num_actors, args.clip_epsilon, args.lr)
