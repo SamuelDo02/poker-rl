@@ -236,7 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta', type=float, default=5)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
     parser.add_argument('--checkpoint_freq', type=int, default=100)
-    parser.add_argument('--self_play', type=bool, default=True)
+    parser.add_argument( '--self_play', action='store_true') 
     args = parser.parse_args()
 
     set_seed(42)
