@@ -84,13 +84,13 @@ def rollout_all_actors(env, value_estimator, old_agent, num_actors):
 
 
 LOG_EPSILON = 10**-7
-def train(env, agent, num_iters, num_actors, clip_epsilon, lr):
+def train(env, agent, num_iters, num_actors, clip_epsilon, lr, checkpointpath):
     old_agent = agent
     value_estimator = ValueEstimator()
     optimizer = optim.Adam(agent.policy.parameters(), lr=lr)
 
     losses = []
-    for _ in tqdm(range(num_iters)):
+    for i in tqdm(range(num_iters)):
         advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, old_agent, num_actors)
         if len(advantages) == 0:
             continue
@@ -108,8 +108,13 @@ def train(env, agent, num_iters, num_actors, clip_epsilon, lr):
 
         optimizer.zero_grad()
         avg_surrogate_loss.backward()
-        optimizer.step() 
+        optimizer.step()
 
+        if i % 100 == 0 and i > 0:
+            torch.save({
+                'model_state_dict': [agent.state_dict()],
+                'optimizer_state_dict': [optimizer.state_dict()]
+            }, checkpointpath)
     plt.plot(losses)
     plt.show()
 
@@ -139,6 +144,7 @@ if __name__ == '__main__':
     parser.add_argument('--rollout_length', type=int, default=5)
     parser.add_argument('--clip_epsilon', type=int, default=0.2)
     parser.add_argument('--lr', type=float, default=0.01)
+
     args = parser.parse_args()
 
     env = rlcard.make(ENV_ID)
@@ -146,4 +152,4 @@ if __name__ == '__main__':
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
     init_env(env, agent, args.num_random_agents)
 
-    train(env, agent, args.num_iters, args.num_actors, args.clip_epsilon, args.lr)
+    train(env, agent, args.num_iters, args.num_actors, args.clip_epsilon, args.lr, 'ppo')
