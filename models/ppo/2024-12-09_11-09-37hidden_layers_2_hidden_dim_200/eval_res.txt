@@ -1,0 +1,4 @@
+.\models\ppo\2024-12-09_11-09-37hidden_layers_2_hidden_dim_200\checkpoints\model_10000.pt: -2.8276
+.\models\no_limit_holdem_dqn_model\model.pth: 2.8276
+.\models\ppo\2024-12-09_11-09-37hidden_layers_2_hidden_dim_200\checkpoints\model_10000.pt: 2.418
+random: -2.418

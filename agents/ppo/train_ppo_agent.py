@@ -19,6 +19,8 @@ from rlcard.games.nolimitholdem.round import Action
 from ppo_agent import PPOAgent
 from ppo_value_estimator import ValueEstimator
 
+from pathlib import Path
+
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
 
@@ -183,12 +185,17 @@ def train(env,
         cumulative_payoff.append(payoff + (cumulative_payoff[-1] if cumulative_payoff else 0))
 
         if (i + 1) % checkpoint_freq == 0:
-            base_path = f'{checkpoint_folder}/{checkpoint_folder_id}'
-            checkpoint_path = f'{base_path}/checkpoints/model_{i + 1}.pt'
+            current_file = Path(__file__).resolve()
+            # Project root (go two levels up and resolve to an absolute path)
+            project_root = current_file.parent.parent.parent.resolve()
+            save_path = Path(f'{checkpoint_folder}/{checkpoint_folder_id}')
+            base_path = project_root / save_path
+
+            checkpoint_path = base_path / f'checkpoints/model_{i + 1}.pt'
             os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True) 
             torch.save(agent, checkpoint_path)
 
-            loss_graph_path = f'{base_path}/loss.png'
+            loss_graph_path = base_path / 'loss.png'
             plt.plot(losses)
             plt.yscale('log')
             plt.xlabel('Iterations')
@@ -196,7 +203,7 @@ def train(env,
             plt.savefig(loss_graph_path)
             plt.close()
 
-            payoff_graph_path = f'{base_path}/payoff.png'
+            payoff_graph_path = base_path / 'payoff.png'
             plt.plot(cumulative_payoff)
             plt.xlabel('Iterations')
             plt.ylabel('Cumulative Payoff')
@@ -225,6 +232,7 @@ def init_env(env, agent, num_other_agents, self_play):
 
 
 if __name__ == '__main__':
+    
     parser = argparse.ArgumentParser(f"Train PPO agent on {ENV_ID}")
     parser.add_argument('--hidden_dim', type=int, default=200)
     parser.add_argument('--num_other_agents', type=int, default=1) 
@@ -240,7 +248,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     set_seed(42)
-    checkpoint_folder_id = current_date_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S") 
+    checkpoint_folder_id = current_date_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     env = rlcard.make(ENV_ID, { 'allow_step_back' : True })
     state_channels, action_channels = env_shape(env)

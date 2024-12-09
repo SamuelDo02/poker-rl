@@ -39,6 +39,10 @@ def evaluate(args):
     rewards = tournament(env, args.num_games)
     for position, reward in enumerate(rewards):
         print(position, args.models[position], reward)
+        # save to txt file at model path parent
+        with open(os.path.join(os.path.dirname(args.models[0]), '../eval_res.txt'), 'a') as f:
+            f.write(f'{args.models[position]}: {reward}\n')
+
 
 def tournament_win_rate(env, num):
     ''' Evaluate he win rate of the agents in the environment
