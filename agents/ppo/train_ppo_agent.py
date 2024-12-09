@@ -124,10 +124,7 @@ def train(env,
         if i % checkpoint_freq == 0 and i > 0:
             checkpoint_path = f'{checkpoint_folder}/{checkpoint_folder_id}/model_{i}.pt'
             os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True) 
-            torch.save({
-                'model_state_dict': [agent.policy.state_dict()],
-                'optimizer_state_dict': [optimizer.state_dict()]
-            }, checkpoint_path)
+            torch.save(agent, checkpoint_path)
             
     plt.plot(losses)
     plt.show()
