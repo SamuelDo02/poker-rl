@@ -24,7 +24,7 @@ def compute_advantage(value_estimator, prev_obs, new_obs):
 def agent_step(env, value_estimator, old_agent, new_agent):
     """
     Steps agent once, keeping track of [advantage], [old_prob], and [new_prob].
-    Must be called when [env ]
+    Must be called when [env] has [new_agent] at [AGENT_ID].
     """
     prev_state = env.get_state(AGENT_ID)
     
