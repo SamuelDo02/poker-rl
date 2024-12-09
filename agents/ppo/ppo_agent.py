@@ -10,6 +10,19 @@ class PPOAgent:
         self.policy = PPOPolicy(state_channels, hidden_dim, action_channels, clip=True)
 
 
+    def step_with_probs(self, state, no_grad=False):
+        obs = torch.from_numpy(state['obs']).float()
+        action_probs = self.policy(obs)
+        action_idx = torch.multinomial(action_probs, num_samples=1, replacement=True).item()
+        action = Action(action_idx)
+
+        # Penalize agent for making non-legal action by always folding.
+        if action not in state['raw_legal_actions']:
+            action = Action.FOLD 
+
+        return action, action_probs
+
+
     def step(self, state):
         ''' Predict the action given the current state in generating training data.
 
@@ -19,15 +32,7 @@ class PPOAgent:
         Returns:
             action (int): The action predicted by the agent.
         '''
-        obs = torch.from_numpy(state['obs']).float()
-        action_probs = self.policy(obs)
-        action_idx = torch.multinomial(action_probs, num_samples=1, replacement=True).item()
-        action = Action(action_idx)
-
-        # Penalize agent for making non-legal action by always folding.
-        if action not in state['raw_legal_actions']:
-            action = Action.CHECK_CALL 
-
+        action, _ = self.step_with_probs(state)
         return action
 
 
@@ -41,9 +46,10 @@ class PPOAgent:
             action (int): The action predicted by the agent.
             probs (list): The list of action probabilities.
         '''
-        action_probs = self.policy(state['obs'])
-        action = torch.multinomial(action_probs, num_samples=1, replacement=True)
+        action, action_probs = self.step_with_probs(state, no_grad=True)
 
         info = {}
-        info['probs'] = {state['raw_legal_actions'][i]: action_probs[list(state['legal_actions'].keys())[i]] for i in range(len(state['legal_actions']))}
+        info['probs'] = { Action(action) : action_probs[action].item() 
+                          for action in state['legal_actions'] }
+
         return action, info
