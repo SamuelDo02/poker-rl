@@ -8,24 +8,32 @@ import rlcard
 from rlcard.agents import RandomAgent
 
 from ppo_agent import PPOAgent
+from ppo_value_estimator import ValueEstimator
 
 ENV_ID = 'no-limit-holdem'
+AGENT_IDX = 0
 
-def rollout(self, env):
+def rollout(env):
     """
     Rollouts a policy for one round.
     """
-    trajectories, payoffs = game_env.run(is_training=True)
+    trajectories, payoffs = env.run(is_training=True)
+    print(payoffs)
 
 
-def train(env, agent, num_iters, num_actors, rollout_length, epsilon):
-    policy = init_policy()
-    for i in tqdm(range(num_iters)):
+def rollout_all_actors(env, num_actors):
+    for _ in range(num_actors):
+        rollout(env) 
+
+
+def train(env, agent, num_iters, num_actors, epsilon):
+    for _ in tqdm(range(num_iters)):
+        rollout_all_actors(env, num_actors)
         old_policy = copy(policy) # TODO: Can we do this without copying?
         # make a new dim for num_actors to do rollouts in parallel
         actors_states = states.reshape([states.shape[0], num_actors, 1])
         # rollout current policy in environment for T timesteps
-        cur_log_probs, prev_log_probs, advantages, states = rollout(actors_states, rollout_length)
+        cur_log_probs, prev_log_probs, advantages, states = rollout(actors_states)
         ratios = torch.exp(cur_log_probs - prev_log_probs)
         surrogate_loss = policy.compute_surrogate_loss(ratios, advantages, epsilon)
         for k in self.num_epochs:
@@ -46,6 +54,7 @@ def init_env(env, agent, num_random_agents):
     random_agents = [RandomAgent(num_actions=env.num_actions) 
                      for _ in range(num_random_agents)]
     env.set_agents([agent, *random_agents])
+    env.set_agents(random_agents)
 
 
 if __name__ == '__main__':
@@ -63,4 +72,4 @@ if __name__ == '__main__':
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
     init_env(env, agent, args.num_random_agents)
 
-    train(env, agent, args.num_iters, args.num_actors, args.rollout_length, args.epsilon)
+    train(env, agent, args.num_iters, args.num_actors, args.epsilon)

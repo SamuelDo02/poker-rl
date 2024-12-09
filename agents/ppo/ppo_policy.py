@@ -2,11 +2,10 @@ import torch
 from torch import nn
 
 class PPOPolicy:
-    # want to make the non-legal probabilities close to zero
-    def __init__(self, in_channels, hidden_dim, action_space, clip=True):
-        # in channels = state feature size 
-        self.linear1 = nn.Linear(in_channels, hidden_dim)
-        self.linear2 = nn.Linear(hidden_dim, action_space)
+    # We want to make the non-legal probabilities close to zero.
+    def __init__(self, state_channels, hidden_dim, action_channels, clip=True):
+        self.linear1 = nn.Linear(state_channels, hidden_dim)
+        self.linear2 = nn.Linear(hidden_dim, action_channels)
         self.relu = nn.ReLU()
         self.softmax = nn.Softmax(dim=-1)
         self.clip = clip 
