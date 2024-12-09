@@ -1,4 +1,5 @@
 from treys import Evaluator, Card, Deck
+import pandas as pd
 
 class ValueEstimator:
     def __init__(self):
@@ -13,6 +14,20 @@ class ValueEstimator:
         for suit in self.SUITS:
             for rank in self.RANKS:
                 self.all_cards.append(rank + suit)
+
+                # Load the preflop lookup table
+        # The CSV should have columns: "Hole Cards", "Win Prob", "Tie Prob"
+        self.preflop_data = pd.read_csv('preflop_probs.csv')
+        # Create a dictionary for quick lookup: { 'AAo': win_prob, 'KKo': win_prob, ... }
+        self.preflop_lookup = {row['Hole Cards'].strip(): float(row['Win Prob'])
+                               for _, row in self.preflop_data.iterrows()}
+
+        # Map ranks to a numerical value for sorting by strength (A high)
+        self.rank_strength = {
+            'A': 14, 'K': 13, 'Q': 12, 'J': 11,
+            'T': 10, '9': 9, '8': 8, '7': 7,
+            '6': 6, '5': 5, '4': 4, '3': 3, '2': 2
+        }
 
 
     def calculate_heuristic_win_prob(self, card_vector):
@@ -40,17 +55,58 @@ class ValueEstimator:
         hole_cards_str = [self.all_cards[i] for i in hole_indices]
         board_cards_str = [self.all_cards[i] for i in board_indices]
 
-        # Convert to treys Card ints
-        hole_cards = [Card.new(c) for c in hole_cards_str]
-        board = [Card.new(c) for c in board_cards_str]
+        # Check if preflop (no board cards)
+        if len(board_indices) == 0:
+            # Preflop scenario: Use the lookup table
+            # Construct a key like 'AAo' or 'AKs' from hole_cards_str
+            preflop_key = self._construct_preflop_key(hole_cards_str)
 
-        # Evaluate the hand
-        score = self.evaluator.evaluate(board, hole_cards)
-        percentile = self.evaluator.get_five_card_rank_percentage(score)
+            if preflop_key in self.preflop_lookup:
+                return self.preflop_lookup[preflop_key]
+            else:
+                # If not found in lookup, return a default value
+                return 0.5
+        else:
+            # Postflop scenario: Use the heuristic (Treys evaluator)
+            hole_cards = [Card.new(c) for c in hole_cards_str]
+            board = [Card.new(c) for c in board_cards_str]
+            score = self.evaluator.evaluate(board, hole_cards)
+            percentile = self.evaluator.get_five_card_rank_percentage(score)
+            win_prob = 1.0 - percentile
+            return win_prob
+        
+    def _construct_preflop_key(self, hole_cards_str):
+        """
+        Construct a preflop hand key (e.g., 'AAo', 'AKs') from two hole cards strings (e.g. ['As', 'Kd']) to index the csv.
 
-        # Heuristic: 1 - percentile
-        win_prob = 1.0 - percentile
-        return win_prob
+        Steps:
+        1. Extract ranks and suits from the two hole cards.
+        2. Determine the higher-ranked card and put it first.
+        3. Determine if suited ('s') or offsuit ('o').
+        """
+
+        # Extract ranks and suits
+        ranks = [c[0] for c in hole_cards_str]
+        suits = [c[1] for c in hole_cards_str]
+
+        # Sort by rank strength so highest rank comes first
+        # We have two cards, so we just find the order
+        if self.rank_strength[ranks[0]] > self.rank_strength[ranks[1]]:
+            high_rank, low_rank = ranks[0], ranks[1]
+            suit1, suit2 = suits[0], suits[1]
+        else:
+            high_rank, low_rank = ranks[1], ranks[0]
+            suit1, suit2 = suits[1], suits[0]
+
+        # Determine suited or offsuit
+        if suit1 == suit2:
+            suited_char = 's'
+        else:
+            suited_char = 'o'
+
+        # Construct hand key
+        hand_key = f"{high_rank}{low_rank}{suited_char}"
+        return hand_key
 
     def calculate_mc_win_prob(self, card_vector, num_samples=1000):
         """
@@ -108,3 +164,8 @@ class ValueEstimator:
         # Compute win probability
         win_prob = wins / num_samples
         return win_prob
+
+if __name__ == "__main__":
+    # Example usage
+    value_estimator = ValueEstimator()
+    print(value_estimator.preflop_data.head())

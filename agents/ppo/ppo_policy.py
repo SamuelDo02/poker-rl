@@ -23,5 +23,5 @@ class PPOPolicy(nn.Module):
     def compute_surrogate_loss(self, ratio, advantages, epsilon):
         loss = 0
         if self.clip:
-            loss = torch.min(torch.matmul(ratio, advantages), torch.matmul(torch.clip(ratio, 1 - epsilon, 1 + epsilon), advantages))
-        return loss 
+            loss = torch.min(torch.mul(ratio, advantages), torch.mul(torch.clip(ratio, 1 - epsilon, 1 + epsilon), advantages))
+        return -loss
