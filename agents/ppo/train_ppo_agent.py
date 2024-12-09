@@ -13,11 +13,13 @@ import matplotlib.pyplot as plt
 
 import rlcard
 from rlcard.agents import RandomAgent
-from rlcard.utils import set_seed
+from rlcard.utils import set_seed, get_device
 from rlcard.games.nolimitholdem.round import Action
 
 from ppo_agent import PPOAgent
 from ppo_value_estimator import ValueEstimator
+
+from loader import load_model
 
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
@@ -210,13 +212,17 @@ def env_shape(env):
     return state_channels, action_channels
 
 
-def init_env(env, agent, num_other_agents, self_play):
+def init_env(env, agent, num_other_agents, self_play, play_against):
     """
     Initializes the poker environment with the specified agent and a number of 
     other agents. The specified agent will always be the first agent. 
     """
     if self_play:
-        other_agents = [copy.deepcopy(agent) for _ in range(num_other_agents)]
+        other_agents = [copy.deepcopy(agent) 
+                        for _ in range(num_other_agents)]
+    elif play_against:
+        other_agents = [load_model(play_against, env, i + 1, get_device())
+                        for i in range(num_other_agents)]
     else:
         other_agents = [RandomAgent(num_actions=env.num_actions) 
                         for _ in range(num_other_agents)]
@@ -236,8 +242,12 @@ if __name__ == '__main__':
     parser.add_argument('--beta', type=float, default=5)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
     parser.add_argument('--checkpoint_freq', type=int, default=100)
-    parser.add_argument( '--self_play', action='store_true') 
+    parser.add_argument('--self_play', action='store_true') 
+    parser.add_argument('--play_against', type=str, default='')
     args = parser.parse_args()
+
+    if args.self_play and args.play_against:
+        raise Exception('Must choose one of --self_play and --play_against.')
 
     set_seed(42)
     checkpoint_folder_id = current_date_time = datetime.now().strftime("%Y-%m-%d_%H:%M:%S") 
@@ -245,7 +255,7 @@ if __name__ == '__main__':
     env = rlcard.make(ENV_ID, { 'allow_step_back' : True })
     state_channels, action_channels = env_shape(env)
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
-    init_env(env, agent, args.num_other_agents, self_play=args.self_play)
+    init_env(env, agent, args.num_other_agents, self_play=args.self_play, play_against=args.play_against)
 
     train(env, 
           agent, 
