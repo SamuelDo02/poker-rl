@@ -1,3 +1,6 @@
+import torch
+from torch import nn
+
 class PPOPolicy:
     # want to make the non-legal probabilities close to zero
     def __init__(self, in_channels, hidden_dim, action_space, clip=True):
