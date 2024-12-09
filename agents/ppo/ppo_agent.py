@@ -12,7 +12,13 @@ class PPOAgent:
 
     def step_with_probs(self, state, no_grad=False):
         obs = torch.from_numpy(state['obs']).float()
-        action_probs = self.policy(obs)
+
+        if no_grad:
+            with torch.no_grad():
+                action_probs = self.policy(obs)
+        else:
+            action_probs = self.policy(obs)
+
         action_idx = torch.multinomial(action_probs, num_samples=1, replacement=True).item()
         action = Action(action_idx)
 

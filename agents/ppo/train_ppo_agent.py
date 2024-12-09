@@ -19,58 +19,54 @@ def compute_advantage(value_estimator, prev_obs, new_obs):
     return curr_val - prev_val
 
 
-def agent_action_log_prob():
-    pass
-
-
 def agent_step(env, value_estimator, old_agent, new_agent):
+    """
+    Steps agent once, keeping track of [advantage], [old_prob], and [new_prob].
+    Must be called when [env ]
+    """
     prev_state = env.get_state(AGENT_ID)
     
-    _, old_action_probs = old_agent.step_with_probs(prev_state)
+    _, old_action_probs = old_agent.step_with_probs(prev_state, no_grad=True)
     new_action, new_action_probs = new_agent.step_with_probs(prev_state)
 
     new_state, _ = env.step(new_action)
 
     advantage = compute_advantage(value_estimator, prev_state['obs'], new_state['obs'])
-    print(advantage)
+    old_prob = old_action_probs[new_action.value]
+    new_prob = new_action_probs[new_action.value]
 
-    # new_state, _, _, info = env.step()
-    # new_agent.step()
+    return advantage, new_prob, old_prob
 
 
-def rollout(env, value_estimator, old_agent, new_agent):
+def rollout(env, value_estimator, old_agent):
     """
     Rollouts agents for one round.
-    """
-    agent_step(env, value_estimator, old_agent, new_agent)
-    """
-    while True:
+    """ 
+    advantages = []
+    old_probs = []
+    new_probs = []
+    
+    while not env.is_over():
         player_id = env.get_player_id()
+        agent = env.agents[player_id]
+
         if player_id == AGENT_ID:
-
+            advantage, new_prob, old_prob = agent_step(env, value_estimator, old_agent, agent)
+            advantages.append(advantage)
+            old_probs.append(old_prob)
+            new_probs.append(new_prob)
         else:
+            state = env.get_state(player_id)
+            action = agent.step(state)
+            env.step(action)
 
-        agent = env.agents[env.get_player_id()]
-        if env.get_player_id() == AGENT_ID:
-        else:
-            env.step()
-
-    for i in range(2, len(agent_trajectories), 2):
-        prev_trajectory = agent_trajectories[i - 2] 
-        action = agent_trajectories[i - 1]
-        curr_trajectory = agent_trajectories[i] 
-
-        prev_state = prev_trajectory['obs']
-        new_state = curr_trajectory['obs']
-
-        advantages.append(advantage(value_estimator, prev_state, new_state))
-    """
+    return advantages, old_probs, new_probs
 
 
 def rollout_all_actors(env, value_estimator, old_agent, new_agent, num_actors):
     # for _ in range(num_actors):
     env.reset()
-    rollout(env, value_estimator, old_agent, new_agent) 
+    print(rollout(env, value_estimator, old_agent))
 
 
 def train(env, agent, value_estimator, num_iters, num_actors, epsilon):
