@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+import matplotlib.pyplot as plt
+
 import rlcard
 from rlcard.agents import RandomAgent
 
@@ -87,6 +89,7 @@ def train(env, agent, num_iters, num_actors, clip_epsilon, lr):
     value_estimator = ValueEstimator()
     optimizer = optim.Adam(agent.policy.parameters(), lr=lr)
 
+    losses = []
     for _ in tqdm(range(num_iters)):
         advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, old_agent, num_actors)
         if len(advantages) == 0:
@@ -99,12 +102,16 @@ def train(env, agent, num_iters, num_actors, clip_epsilon, lr):
         advantages = torch.tensor(advantages)
         surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, clip_epsilon)
         avg_surrogate_loss = torch.mean(surrogate_loss) 
+        losses.append(avg_surrogate_loss.item())
 
         old_agent = copy.deepcopy(agent)
 
         optimizer.zero_grad()
         avg_surrogate_loss.backward()
         optimizer.step() 
+
+    plt.plot(losses)
+    plt.show()
 
 
 def env_shape(env):
