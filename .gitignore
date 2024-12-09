@@ -7,3 +7,4 @@ __pycache__/
 .idea/modules.xml
 .idea/misc.xml
 .idea/inspectionProfiles/profiles_settings.xml
+models/
