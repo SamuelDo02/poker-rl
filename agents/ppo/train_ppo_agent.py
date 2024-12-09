@@ -22,6 +22,13 @@ from ppo_value_estimator import ValueEstimator
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
 
+def step_only_legal(env, action, state):
+    if action in state['raw_legal_actions']:
+        env.step(action)
+    else:
+        env.step(random.choice(state['raw_legal_actions']))
+
+
 def compute_value(value_estimator, state):
     win_prob = value_estimator.calculate_heuristic_win_prob(state['obs'].tolist())
     my_chips = state['raw_obs']['my_chips']  
@@ -58,7 +65,7 @@ def rollout_action(env, value_estimator, old_agent, num_action_samples):
             other_agent = env.agents[other_agent_id]
             other_agent_state = env.get_state(other_agent_id)
             other_agent_action = other_agent.step(other_agent_state)
-            env.step(other_agent_action)
+            step_only_legal(env, other_agent_action, other_agent_state)
             num_steps += 1
 
         if env.is_over():
@@ -98,7 +105,7 @@ def rollout(env, value_estimator, old_agent, num_action_samples):
         else:
             state = env.get_state(player_id)
             action = agent.step(state)
-            env.step(action)
+            step_only_legal(env, action, state)
 
     payoff = env.get_payoffs()[AGENT_ID]
 
@@ -134,6 +141,7 @@ def train(env,
           clip_epsilon, 
           lr, 
           beta,
+          self_play,
           checkpoint_folder,
           checkpoint_freq,
           checkpoint_folder_id):
@@ -164,6 +172,9 @@ def train(env,
         losses.append(surrogate_loss.mean().item())
 
         old_agent = copy.deepcopy(agent)
+
+        if self_play:
+            env.agents = [agent, old_agent, *env.agents[1:-1]]
 
         optimizer.zero_grad()
         mean_loss.backward()
@@ -199,20 +210,24 @@ def env_shape(env):
     return state_channels, action_channels
 
 
-def init_env(env, agent, num_random_agents):
+def init_env(env, agent, num_other_agents, self_play):
     """
     Initializes the poker environment with the specified agent and a number of 
-    random agents. The specified agent will always be the first agent. 
+    other agents. The specified agent will always be the first agent. 
     """
-    random_agents = [RandomAgent(num_actions=env.num_actions) 
-                     for _ in range(num_random_agents)]
-    env.set_agents([agent, *random_agents])
+    if self_play:
+        other_agents = [copy.deepcopy(agent) for _ in range(num_other_agents)]
+    else:
+        other_agents = [RandomAgent(num_actions=env.num_actions) 
+                        for _ in range(num_other_agents)]
+
+    env.set_agents([agent, *other_agents])
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(f"Train PPO agent on {ENV_ID}")
     parser.add_argument('--hidden_dim', type=int, default=200)
-    parser.add_argument('--num_random_agents', type=int, default=1) 
+    parser.add_argument('--num_other_agents', type=int, default=1) 
     parser.add_argument('--num_iters', type=int, default=1000)
     parser.add_argument('--num_actors', type=int, default=1)
     parser.add_argument('--num_action_samples', type=int, default=50)
@@ -221,6 +236,7 @@ if __name__ == '__main__':
     parser.add_argument('--beta', type=float, default=5)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
     parser.add_argument('--checkpoint_freq', type=int, default=100)
+    parser.add_argument('--self_play', type=bool, default=True)
     args = parser.parse_args()
 
     set_seed(42)
@@ -229,7 +245,7 @@ if __name__ == '__main__':
     env = rlcard.make(ENV_ID, { 'allow_step_back' : True })
     state_channels, action_channels = env_shape(env)
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
-    init_env(env, agent, args.num_random_agents)
+    init_env(env, agent, args.num_other_agents, self_play=args.self_play)
 
     train(env, 
           agent, 
@@ -239,6 +255,7 @@ if __name__ == '__main__':
           args.clip_epsilon, 
           args.lr, 
           args.beta,
+          args.self_play,
           args.checkpoint_folder,
           args.checkpoint_freq,
           checkpoint_folder_id)
