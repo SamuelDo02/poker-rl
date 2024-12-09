@@ -1,0 +1,4 @@
+.\models\ppo\2024-12-09_10-51-09_beta_0.0\checkpoints\model_10000.pt: -2.8445
+.\models\no_limit_holdem_dqn_model\model.pth: 2.8445
+.\models\ppo\2024-12-09_10-51-09_beta_0.0\checkpoints\model_10000.pt: 2.8372
+random: -2.8372
