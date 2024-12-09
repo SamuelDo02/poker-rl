@@ -15,7 +15,7 @@ AGENT_IDX = 0
 
 def rollout(env):
     """
-    Rollouts a policy for one round.
+    Rollouts agents for one round.
     """
     trajectories, payoffs = env.run(is_training=True)
     print(payoffs)
