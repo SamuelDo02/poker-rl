@@ -17,6 +17,8 @@ from rlcard.utils import (
     set_seed,
     tournament,
 )
+import matplotlib.pyplot as plt
+import re
 
 def evaluate(args):
 
@@ -39,6 +41,53 @@ def evaluate(args):
     rewards = tournament(env, args.num_games)
     for position, reward in enumerate(rewards):
         print(position, args.models[position], reward)
+
+
+def evaluate_model_checkpoints(args):
+    # Check whether gpu is available
+    device = get_device()
+
+    # Seed numpy, torch, random
+    set_seed(args.seed)
+
+    # Make the environment with seed
+    env = rlcard.make(args.env, config={'seed': args.seed})
+
+    average_rewards = {}
+    iterations = []
+    ckpt_path = args.ckpts
+    print(os.listdir(ckpt_path))
+    for ckpt_file in sorted(os.listdir(ckpt_path)):
+        model_path = os.path.join(ckpt_path, ckpt_file)
+        print(model_path)
+        model_paths = [model_path, 'random']
+        if model_path.endswith(".pt"):
+            match = re.search(r'\d+', os.path.basename(model_path))
+            iteration = int(match.group())
+            iterations.append(iteration)
+            # Load models
+            agents = []
+            for position, model in enumerate(model_paths):
+                print(position, model)
+                agents.append(load_model(model, env, position, device))
+            env.set_agents(agents)
+
+            # Evaluate
+            rewards = tournament(env, args.num_games)
+            for position, reward in enumerate(rewards):
+                print(position, model_paths[position], reward)
+                if position == 0:
+                    average_rewards[iteration] = reward
+
+    ave_reward_path = f'{ckpt_path}/average_rewards.png'
+    sorted_rewards = []
+    for iteration in sorted(iterations):
+        sorted_rewards.append(average_rewards[iteration])
+    plt.plot(sorted(iterations), sorted_rewards)
+    plt.xlabel('Iterations')
+    plt.ylabel(f'Average Reward over {args.num_games} games')
+    plt.savefig(ave_reward_path)
+    plt.close()
 
 def tournament_win_rate(env, num):
     ''' Evaluate he win rate of the agents in the environment
@@ -134,8 +183,24 @@ if __name__ == '__main__':
         default=10000,
     )
 
+    parser.add_argument(
+        '--ckpts',
+        type=str,
+        default="models/ppo/default_num_iters_10000_correct/checkpoints",
+    )
+    parser.add_argument(
+        '--all',
+        action='store_true',
+        default=False,
+    )
+
     args = parser.parse_args()
 
     os.environ["CUDA_VISIBLE_DEVICES"] = args.cuda
-    evaluate(args)
+    if args.all:
+        evaluate_model_checkpoints(args)
+    else:
+        evaluate(args)
+
+
 
