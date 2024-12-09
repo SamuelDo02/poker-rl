@@ -54,6 +54,8 @@ class PPOAgent:
             probs (list): The list of action probabilities.
         '''
         action, action_probs = self.step_with_probs(state, no_grad=True)
+        if action not in state['raw_legal_actions']:
+            action = Action.FOLD
 
         info = {}
         info['probs'] = { Action(action) : action_probs[action].item() 

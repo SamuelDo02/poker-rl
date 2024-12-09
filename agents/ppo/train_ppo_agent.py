@@ -201,7 +201,7 @@ def init_env(env, agent, num_random_agents):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(f"Train PPO agent on {ENV_ID}")
-    parser.add_argument('--hidden_dim', type=int, default=300)
+    parser.add_argument('--hidden_dim', type=int, default=200)
     parser.add_argument('--num_random_agents', type=int, default=1) 
     parser.add_argument('--num_iters', type=int, default=1000)
     parser.add_argument('--num_actors', type=int, default=1)
