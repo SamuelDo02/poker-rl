@@ -27,10 +27,6 @@ class PPOAgent:
         action_idx = torch.multinomial(action_probs, num_samples=1, replacement=True).item()
         action = Action(action_idx)
 
-        # Penalize agent for making non-legal action by always folding.
-        if action not in state['raw_legal_actions']:
-            action = Action.FOLD 
-
         return action, action_probs
 
 

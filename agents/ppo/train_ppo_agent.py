@@ -1,4 +1,5 @@
 import argparse
+import random
 import os
 import copy
 from datetime import datetime
@@ -13,6 +14,7 @@ import matplotlib.pyplot as plt
 import rlcard
 from rlcard.agents import RandomAgent
 from rlcard.utils import set_seed
+from rlcard.games.nolimitholdem.round import Action
 
 from ppo_agent import PPOAgent
 from ppo_value_estimator import ValueEstimator
@@ -27,6 +29,7 @@ def compute_value(value_estimator, state):
     return other_chips * win_prob - my_chips * (1 - win_prob)
 
 
+NON_LEGAL_ADVANTAGE = -3000
 def rollout_action(env, value_estimator, old_agent, num_action_samples):
     """
     Rollouts agent for one action, taking the expected TD value over samples.
@@ -36,6 +39,13 @@ def rollout_action(env, value_estimator, old_agent, num_action_samples):
 
     _, old_action_probs = old_agent.step_with_probs(start_state, no_grad=True)
     new_action, new_action_probs = new_agent.step_with_probs(start_state)
+
+    old_prob = old_action_probs[new_action.value]
+    new_prob = new_action_probs[new_action.value]
+
+    if Action(new_action) not in start_state['raw_legal_actions']:
+        env.step(random.choice(start_state['raw_legal_actions']))
+        return old_prob, new_prob, new_action_probs, NON_LEGAL_ADVANTAGE
 
     total_advantage = 0
     env.step(new_action)
@@ -61,8 +71,6 @@ def rollout_action(env, value_estimator, old_agent, num_action_samples):
         for _ in range(num_steps):
             env.step_back()
 
-    old_prob = old_action_probs[new_action.value]
-    new_prob = new_action_probs[new_action.value]
     mean_advantage = total_advantage / num_action_samples
     return old_prob, new_prob, new_action_probs, mean_advantage
 
@@ -168,8 +176,8 @@ def train(env,
 
         cumulative_payoff.append(payoff + (cumulative_payoff[-1] if cumulative_payoff else 0))
             
-    # plt.plot(losses)
-    # plt.show()
+    plt.plot(losses)
+    plt.show()
 
     plt.plot(cumulative_payoff)
     plt.show()
@@ -193,9 +201,9 @@ def init_env(env, agent, num_random_agents):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(f"Train PPO agent on {ENV_ID}")
-    parser.add_argument('--hidden_dim', type=int, default=100)
+    parser.add_argument('--hidden_dim', type=int, default=300)
     parser.add_argument('--num_random_agents', type=int, default=1) 
-    parser.add_argument('--num_iters', type=int, default=200)
+    parser.add_argument('--num_iters', type=int, default=1000)
     parser.add_argument('--num_actors', type=int, default=1)
     parser.add_argument('--num_action_samples', type=int, default=50)
     parser.add_argument('--clip_epsilon', type=int, default=0.2)
