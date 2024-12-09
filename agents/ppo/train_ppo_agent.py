@@ -1,4 +1,5 @@
 import argparse
+import copy
 from tqdm import tqdm
 
 import torch
@@ -81,11 +82,12 @@ def rollout_all_actors(env, value_estimator, old_agent, num_actors):
 
 
 def train(env, agent, num_iters, num_actors, epsilon, lr):
+    old_agent = agent
     value_estimator = ValueEstimator()
     optimizer = optim.Adam(agent.policy.parameters(), lr=lr)
 
     for _ in tqdm(range(num_iters)):
-        advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, agent, num_actors)
+        advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, old_agent, num_actors)
 
         old_log_probs = torch.log(torch.stack(old_probs))
         new_log_probs = torch.log(torch.stack(new_probs))
@@ -94,6 +96,8 @@ def train(env, agent, num_iters, num_actors, epsilon, lr):
         advantages = torch.tensor(advantages)
         surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, epsilon)
         avg_surrogate_loss = torch.mean(surrogate_loss) 
+
+        old_agent = copy.deepcopy(agent)
 
         optimizer.zero_grad()
         avg_surrogate_loss.backward()
