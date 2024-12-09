@@ -13,9 +13,9 @@ from ppo_value_estimator import ValueEstimator
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
 
-def advantage(value_estimator, prev_state, curr_state):
-    prev_val = value_estimator.calculate_heuristic_win_prob(prev_state.tolist())
-    curr_val = value_estimator.calculate_heuristic_win_prob(curr_state.tolist())
+def compute_advantage(value_estimator, prev_obs, new_obs):
+    prev_val = value_estimator.calculate_heuristic_win_prob(prev_obs.tolist())
+    curr_val = value_estimator.calculate_heuristic_win_prob(new_obs.tolist())
     return curr_val - prev_val
 
 
@@ -23,14 +23,37 @@ def agent_action_log_prob():
     pass
 
 
+def agent_step(env, value_estimator, old_agent, new_agent):
+    prev_state = env.get_state(AGENT_ID)
+    
+    _, old_action_probs = old_agent.step_with_probs(prev_state)
+    new_action, new_action_probs = new_agent.step_with_probs(prev_state)
+
+    new_state, _ = env.step(new_action)
+
+    advantage = compute_advantage(value_estimator, prev_state['obs'], new_state['obs'])
+    print(advantage)
+
+    # new_state, _, _, info = env.step()
+    # new_agent.step()
+
+
 def rollout(env, value_estimator, old_agent, new_agent):
     """
     Rollouts agents for one round.
     """
-    advantages = []
+    agent_step(env, value_estimator, old_agent, new_agent)
+    """
+    while True:
+        player_id = env.get_player_id()
+        if player_id == AGENT_ID:
 
-    trajectories, _ = env.run(is_training=True)
-    agent_trajectories = trajectories[AGENT_ID]
+        else:
+
+        agent = env.agents[env.get_player_id()]
+        if env.get_player_id() == AGENT_ID:
+        else:
+            env.step()
 
     for i in range(2, len(agent_trajectories), 2):
         prev_trajectory = agent_trajectories[i - 2] 
@@ -41,6 +64,7 @@ def rollout(env, value_estimator, old_agent, new_agent):
         new_state = curr_trajectory['obs']
 
         advantages.append(advantage(value_estimator, prev_state, new_state))
+    """
 
 
 def rollout_all_actors(env, value_estimator, old_agent, new_agent, num_actors):
