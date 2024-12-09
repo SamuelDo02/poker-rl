@@ -27,7 +27,7 @@ def compute_value(value_estimator, state):
     return other_chips * win_prob - my_chips * (1 - win_prob)
 
 
-def agent_step(env, value_estimator, old_agent, new_agent):
+def agent_step(env, old_agent, new_agent):
     """
     Steps agent once, keeping track of [advantage], [old_prob], and [new_prob].
     Must be called when [env] has [new_agent] at [AGENT_ID].
@@ -42,7 +42,7 @@ def agent_step(env, value_estimator, old_agent, new_agent):
     old_prob = old_action_probs[new_action.value]
     new_prob = new_action_probs[new_action.value]
 
-    return new_prob, old_prob
+    return new_prob, old_prob, new_action_probs
 
 
 def rollout(env, value_estimator, old_agent):
@@ -52,6 +52,7 @@ def rollout(env, value_estimator, old_agent):
     advantages = []
     old_probs = []
     new_probs = []
+    all_action_probs = []
 
     old_state = None
     while not env.is_over():
@@ -65,9 +66,10 @@ def rollout(env, value_estimator, old_agent):
                 new_value = compute_value(value_estimator, state)
                 advantages.append(new_value - old_value)
 
-            new_prob, old_prob = agent_step(env, value_estimator, old_agent, agent)
+            new_prob, old_prob, action_probs = agent_step(env, old_agent, agent)
             old_probs.append(old_prob)
             new_probs.append(new_prob)
+            all_action_probs.append(action_probs)
 
             old_state = copy.deepcopy(state)
         else:
@@ -75,23 +77,29 @@ def rollout(env, value_estimator, old_agent):
             action = agent.step(state)
             env.step(action)
 
-    return advantages, old_probs[:-1], new_probs[:-1]
+    payoff = env.get_payoffs()[AGENT_ID]
+
+    return advantages, old_probs[:-1], new_probs[:-1], all_action_probs[:-1], payoff
 
 
 def rollout_all_actors(env, value_estimator, old_agent, num_actors):
     all_advantages = []
     all_old_probs = []
     all_new_probs = []
+    all_action_probs = []
+    payoff = 0
 
     for _ in range(num_actors):
         # TODO: May have to make multiple environments to run in parallel.
         env.reset() 
-        advantages, old_probs, new_probs = rollout(env, value_estimator, old_agent)
+        advantages, old_probs, new_probs, action_probs, single_payoff = rollout(env, value_estimator, old_agent)
         all_advantages.extend(advantages)
         all_old_probs.extend(old_probs)
         all_new_probs.extend(new_probs)
+        all_action_probs.extend(action_probs)
+        payoff += single_payoff
 
-    return all_advantages, all_old_probs, all_new_probs
+    return all_advantages, all_old_probs, all_new_probs, all_action_probs, payoff
 
 
 LOG_EPSILON = 10**-7
@@ -101,6 +109,7 @@ def train(env,
           num_actors, 
           clip_epsilon, 
           lr, 
+          beta,
           checkpoint_folder,
           checkpoint_freq,
           checkpoint_folder_id):
@@ -109,8 +118,9 @@ def train(env,
     optimizer = optim.Adam(agent.policy.parameters(), lr=lr)
 
     losses = []
+    cumulative_payoff = []
     for i in tqdm(range(num_iters)):
-        advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, old_agent, num_actors)
+        advantages, old_probs, new_probs, action_probs, payoff = rollout_all_actors(env, value_estimator, old_agent, num_actors)
         if len(advantages) == 0:
             continue
 
@@ -120,21 +130,32 @@ def train(env,
 
         advantages = torch.tensor(advantages)
         surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, clip_epsilon)
-        avg_surrogate_loss = torch.mean(surrogate_loss) 
-        losses.append(avg_surrogate_loss.item())
+
+        action_probs = torch.stack(action_probs)
+        entropy = torch.sum(action_probs * torch.log(action_probs + LOG_EPSILON), dim=-1)
+        entropy.reshape(surrogate_loss.shape)
+        
+        total_loss = surrogate_loss - beta * entropy
+        mean_loss = torch.mean(total_loss) 
+        losses.append(surrogate_loss.mean().item())
 
         old_agent = copy.deepcopy(agent)
 
         optimizer.zero_grad()
-        avg_surrogate_loss.backward()
+        mean_loss.backward()
         optimizer.step()
 
         if i % checkpoint_freq == 0 and i > 0:
             checkpoint_path = f'{checkpoint_folder}/{checkpoint_folder_id}/model_{i}.pt'
             os.makedirs(os.path.dirname(checkpoint_path), exist_ok=True) 
             torch.save(agent, checkpoint_path)
+
+        cumulative_payoff.append(payoff + (cumulative_payoff[-1] if cumulative_payoff else 0))
             
-    plt.plot(losses)
+    # plt.plot(losses)
+    # plt.show()
+
+    plt.plot(cumulative_payoff)
     plt.show()
 
 
@@ -160,8 +181,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_random_agents', type=int, default=1) 
     parser.add_argument('--num_iters', type=int, default=200)
     parser.add_argument('--num_actors', type=int, default=50)
-    parser.add_argument('--clip_epsilon', type=int, default=0.2)
+    parser.add_argument('--clip_epsilon', type=int, default=0.3)
     parser.add_argument('--lr', type=float, default=0.01)
+    parser.add_argument('--beta', type=float, default=5000)
     parser.add_argument('--checkpoint_folder', type=str, default='models/ppo')
     parser.add_argument('--checkpoint_freq', type=int, default=500)
     args = parser.parse_args()
@@ -180,6 +202,7 @@ if __name__ == '__main__':
           args.num_actors, 
           args.clip_epsilon, 
           args.lr, 
+          args.beta,
           args.checkpoint_folder,
           args.checkpoint_freq,
           checkpoint_folder_id)
