@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 
 import rlcard
 from rlcard.agents import RandomAgent
+from rlcard.utils import set_seed
 
 from ppo_agent import PPOAgent
 from ppo_value_estimator import ValueEstimator
@@ -137,9 +138,11 @@ if __name__ == '__main__':
     parser.add_argument('--num_iters', type=int, default=200)
     parser.add_argument('--num_actors', type=int, default=5)
     parser.add_argument('--rollout_length', type=int, default=5)
-    parser.add_argument('--clip_epsilon', type=int, default=0.2)
-    parser.add_argument('--lr', type=float, default=0.01)
+    parser.add_argument('--clip_epsilon', type=int, default=0.1)
+    parser.add_argument('--lr', type=float, default=0.1)
     args = parser.parse_args()
+
+    set_seed(42)
 
     env = rlcard.make(ENV_ID)
     state_channels, action_channels = env_shape(env)
