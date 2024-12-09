@@ -20,10 +20,11 @@ from ppo_value_estimator import ValueEstimator
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
 
-def compute_advantage(value_estimator, prev_state, new_state):
-    prev_val = value_estimator.calculate_heuristic_win_prob(prev_state['obs'].tolist())
-    new_val = value_estimator.calculate_heuristic_win_prob(new_state['obs'].tolist())
-    return new_val * new_state['raw_obs']['pot'] - prev_val * prev_state['raw_obs']['pot']
+def compute_value(value_estimator, state):
+    win_prob = value_estimator.calculate_heuristic_win_prob(state['obs'].tolist())
+    my_chips = state['raw_obs']['my_chips']  
+    other_chips = state['raw_obs']['pot'] - my_chips
+    return other_chips * win_prob - my_chips * (1 - win_prob)
 
 
 def agent_step(env, value_estimator, old_agent, new_agent):
@@ -36,13 +37,12 @@ def agent_step(env, value_estimator, old_agent, new_agent):
     _, old_action_probs = old_agent.step_with_probs(prev_state, no_grad=True)
     new_action, new_action_probs = new_agent.step_with_probs(prev_state)
 
-    new_state, _ = env.step(new_action)
+    env.step(new_action)
 
-    advantage = compute_advantage(value_estimator, prev_state, new_state)
     old_prob = old_action_probs[new_action.value]
     new_prob = new_action_probs[new_action.value]
 
-    return advantage, new_prob, old_prob
+    return new_prob, old_prob
 
 
 def rollout(env, value_estimator, old_agent):
@@ -52,22 +52,30 @@ def rollout(env, value_estimator, old_agent):
     advantages = []
     old_probs = []
     new_probs = []
-    
+
+    old_state = None
     while not env.is_over():
         player_id = env.get_player_id()
         agent = env.agents[player_id]
+        state = env.get_state(player_id)
 
         if player_id == AGENT_ID:
-            advantage, new_prob, old_prob = agent_step(env, value_estimator, old_agent, agent)
-            advantages.append(advantage)
+            if old_state != None:
+                old_value = compute_value(value_estimator, old_state)
+                new_value = compute_value(value_estimator, state)
+                advantages.append(new_value - old_value)
+
+            new_prob, old_prob = agent_step(env, value_estimator, old_agent, agent)
             old_probs.append(old_prob)
             new_probs.append(new_prob)
+
+            old_state = copy.deepcopy(state)
         else:
             state = env.get_state(player_id)
             action = agent.step(state)
             env.step(action)
 
-    return advantages, old_probs, new_probs
+    return advantages, old_probs[:-1], new_probs[:-1]
 
 
 def rollout_all_actors(env, value_estimator, old_agent, num_actors):
