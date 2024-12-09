@@ -11,24 +11,47 @@ from ppo_agent import PPOAgent
 from ppo_value_estimator import ValueEstimator
 
 ENV_ID = 'no-limit-holdem'
-AGENT_IDX = 0
+AGENT_ID = 0
 
-def rollout(env):
+def advantage(value_estimator, prev_state, curr_state):
+    prev_val = value_estimator.calculate_heuristic_win_prob(prev_state.tolist())
+    curr_val = value_estimator.calculate_heuristic_win_prob(curr_state.tolist())
+    return curr_val - prev_val
+
+
+def agent_action_log_prob():
+    pass
+
+
+def rollout(env, value_estimator, old_agent, new_agent):
     """
     Rollouts agents for one round.
     """
+    advantages = []
+
     trajectories, _ = env.run(is_training=True)
-    print(trajectories)
+    agent_trajectories = trajectories[AGENT_ID]
+
+    for i in range(2, len(agent_trajectories), 2):
+        prev_trajectory = agent_trajectories[i - 2] 
+        action = agent_trajectories[i - 1]
+        curr_trajectory = agent_trajectories[i] 
+
+        prev_state = prev_trajectory['obs']
+        new_state = curr_trajectory['obs']
+
+        advantages.append(advantage(value_estimator, prev_state, new_state))
 
 
-def rollout_all_actors(env, num_actors):
-    for _ in range(num_actors):
-        rollout(env) 
+def rollout_all_actors(env, value_estimator, old_agent, new_agent, num_actors):
+    # for _ in range(num_actors):
+    env.reset()
+    rollout(env, value_estimator, old_agent, new_agent) 
 
 
-def train(env, agent, num_iters, num_actors, epsilon):
+def train(env, agent, value_estimator, num_iters, num_actors, epsilon):
     for _ in tqdm(range(num_iters)):
-        rollout_all_actors(env, num_actors)
+        rollout_all_actors(env, value_estimator, agent, agent, num_actors)
         old_policy = copy(policy) # TODO: Can we do this without copying?
         # make a new dim for num_actors to do rollouts in parallel
         actors_states = states.reshape([states.shape[0], num_actors, 1])
@@ -71,4 +94,6 @@ if __name__ == '__main__':
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
     init_env(env, agent, args.num_random_agents)
 
-    train(env, agent, args.num_iters, args.num_actors, args.epsilon)
+    value_estimator = ValueEstimator()
+
+    train(env, agent, value_estimator, args.num_iters, args.num_actors, args.epsilon)

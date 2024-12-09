@@ -1,5 +1,7 @@
 import torch
 
+from rlcard.games.nolimitholdem.round import Action
+
 from ppo_policy import PPOPolicy
 
 class PPOAgent:
@@ -17,8 +19,14 @@ class PPOAgent:
         Returns:
             action (int): The action predicted by the agent.
         '''
-        action_probs = self.policy(state['obs'])
-        action = torch.multinomial(action_probs, num_samples=1, replacement=True)
+        obs = torch.from_numpy(state['obs']).float()
+        action_probs = self.policy(obs)
+        action_idx = torch.multinomial(action_probs, num_samples=1, replacement=True).item()
+        action = Action(action_idx)
+
+        # Penalize agent for making non-legal action by always folding.
+        if action not in state['raw_legal_actions']:
+            action = Action.CHECK_CALL 
 
         return action
 
