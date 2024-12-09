@@ -88,6 +88,8 @@ def train(env, agent, num_iters, num_actors, epsilon, lr):
 
     for _ in tqdm(range(num_iters)):
         advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, old_agent, num_actors)
+        if len(advantages) == 0:
+            continue
 
         old_log_probs = torch.log(torch.stack(old_probs))
         new_log_probs = torch.log(torch.stack(new_probs))
