@@ -20,10 +20,10 @@ from ppo_value_estimator import ValueEstimator
 ENV_ID = 'no-limit-holdem'
 AGENT_ID = 0
 
-def compute_advantage(value_estimator, prev_obs, new_obs):
-    prev_val = value_estimator.calculate_heuristic_win_prob(prev_obs.tolist())
-    curr_val = value_estimator.calculate_heuristic_win_prob(new_obs.tolist())
-    return curr_val - prev_val
+def compute_advantage(value_estimator, prev_state, new_state):
+    prev_val = value_estimator.calculate_heuristic_win_prob(prev_state['obs'].tolist())
+    new_val = value_estimator.calculate_heuristic_win_prob(new_state['obs'].tolist())
+    return new_val * new_state['raw_obs']['pot'] - prev_val * prev_state['raw_obs']['pot']
 
 
 def agent_step(env, value_estimator, old_agent, new_agent):
@@ -38,7 +38,7 @@ def agent_step(env, value_estimator, old_agent, new_agent):
 
     new_state, _ = env.step(new_action)
 
-    advantage = compute_advantage(value_estimator, prev_state['obs'], new_state['obs'])
+    advantage = compute_advantage(value_estimator, prev_state, new_state)
     old_prob = old_action_probs[new_action.value]
     new_prob = new_action_probs[new_action.value]
 
