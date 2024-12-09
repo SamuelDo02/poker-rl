@@ -63,22 +63,38 @@ def rollout(env, value_estimator, old_agent):
     return advantages, old_probs, new_probs
 
 
-def rollout_all_actors(env, value_estimator, old_agent, new_agent, num_actors):
-    # for _ in range(num_actors):
-    env.reset()
-    print(rollout(env, value_estimator, old_agent))
+def rollout_all_actors(env, value_estimator, old_agent, num_actors):
+    all_advantages = []
+    all_old_probs = []
+    all_new_probs = []
+
+    for _ in range(num_actors):
+        # TODO: May have to make multiple environments to run in parallel.
+        env.reset() 
+        advantages, old_probs, new_probs = rollout(env, value_estimator, old_agent)
+        all_advantages.extend(advantages)
+        all_old_probs.extend(old_probs)
+        all_new_probs.extend(new_probs)
+
+    return all_advantages, all_old_probs, all_new_probs
 
 
-def train(env, agent, value_estimator, num_iters, num_actors, epsilon):
+def train(env, agent, num_iters, num_actors, epsilon):
+    value_estimator = ValueEstimator()
+
     for _ in tqdm(range(num_iters)):
-        rollout_all_actors(env, value_estimator, agent, agent, num_actors)
-        old_policy = copy(policy) # TODO: Can we do this without copying?
-        # make a new dim for num_actors to do rollouts in parallel
-        actors_states = states.reshape([states.shape[0], num_actors, 1])
-        # rollout current policy in environment for T timesteps
-        cur_log_probs, prev_log_probs, advantages, states = rollout(actors_states)
-        ratios = torch.exp(cur_log_probs - prev_log_probs)
+        advantages, old_probs, new_probs = rollout_all_actors(env, value_estimator, agent, num_actors)
+
+        old_log_probs = torch.log(torch.stack(old_probs))
+        new_log_probs = torch.log(torch.stack(new_probs))
+        prob_ratios = torch.exp(new_log_probs - old_log_probs)
+
+        advantages = torch.tensor(advantages)
+        agent.policy.compute_surrogate_loss 
+        print(advantages, old_probs, new_probs)
+
         surrogate_loss = policy.compute_surrogate_loss(ratios, advantages, epsilon)
+        # TODO: Copy before this.
         for k in self.num_epochs:
             surrogate_loss.backward()
 
@@ -114,6 +130,4 @@ if __name__ == '__main__':
     agent = PPOAgent(state_channels, args.hidden_dim, action_channels)
     init_env(env, agent, args.num_random_agents)
 
-    value_estimator = ValueEstimator()
-
-    train(env, agent, value_estimator, args.num_iters, args.num_actors, args.epsilon)
+    train(env, agent, args.num_iters, args.num_actors, args.epsilon)
