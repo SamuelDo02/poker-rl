@@ -92,15 +92,12 @@ def train(env, agent, num_iters, num_actors, epsilon, lr):
         prob_ratios = torch.exp(new_log_probs - old_log_probs)
 
         advantages = torch.tensor(advantages)
-        agent.policy.compute_surrogate_loss 
-        print(advantages, old_probs, new_probs)
+        surrogate_loss = agent.policy.compute_surrogate_loss(prob_ratios, advantages, epsilon)
+        avg_surrogate_loss = torch.mean(surrogate_loss) 
 
-        surrogate_loss = policy.compute_surrogate_loss(ratios, advantages, epsilon)
-        # TODO: Copy before this.
-        for k in self.num_epochs:
-            optimizer.zero_grad()
-            surrogate_loss.backward()
-            optimizer.step() 
+        optimizer.zero_grad()
+        avg_surrogate_loss.backward()
+        optimizer.step() 
 
 
 def env_shape(env):
